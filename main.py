@@ -6,13 +6,10 @@ from flask import Flask, request, session, redirect
 from threading import Thread
 from collections import deque
 
-# --- SICHERHEIT: Geheim + Passwort aus Render ---
-# In Render einstellen als Environment Variables!
 ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "admin-jj-geheim-123")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "jj-passwort-123")
 FLASK_SECRET = os.environ.get("FLASK_SECRET", "jj-super-geheim-key-123")
 
-# --- Flask + Admin Menü mit BEIDEM ---
 app = Flask(__name__)
 app.secret_key = FLASK_SECRET
 
@@ -58,7 +55,6 @@ def home():
     </html>
     """
 
-# Fake /admin - damit keiner merkt, dass es ein Admin-Menü gibt!
 @app.route('/admin')
 def fake_admin():
     return """
@@ -69,10 +65,8 @@ def fake_admin():
     </body></html>
     """
 
-# ECHTES Admin-Menü - nur mit geheimer URL + Passwort!
 @app.route(f'/{ADMIN_SECRET}', methods=['GET', 'POST'])
 def real_admin():
-    # Passwort prüfen
     if request.method == 'POST':
         pw = request.form.get('password', '')
         if pw == ADMIN_PASSWORD:
@@ -86,9 +80,7 @@ def real_admin():
                 <a href="/" style="color:#ff6eb4;">Zurück</a>
             </body></html>
             """
-
     if not session.get('admin_ok'):
-        # Login-Formular zeigen
         return f"""
         <html><body style="background:#0f0f1a; color:white; font-family:Arial; text-align:center; padding-top:80px;">
             <h1>🔐 JJ Admin-Login</h1>
@@ -100,15 +92,12 @@ def real_admin():
             </form>
         </body></html>
         """
-
-    # Eingeloggt -> Admin-Menü zeigen
     modus = get_modus()
     rows = ""
     for eintrag in command_log:
         rows += f"<tr><td style='padding:10px; border-bottom:1px solid #333;'>{eintrag['zeit']}</td><td style='padding:10px; border-bottom:1px solid #333;'>{eintrag['user']}</td><td style='padding:10px; border-bottom:1px solid #333;'>{eintrag['befehl']}</td></tr>"
     if not rows:
         rows = "<tr><td colspan='3' style='padding:20px;'>Noch keine Befehle... schreib mal in Discord `hey JJ`!</td></tr>"
-
     return f"""
     <html>
     <head><title>JJ Admin-Menü</title><meta http-equiv="refresh" content="10"></head>
@@ -134,7 +123,6 @@ def run_flask():
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
 
-# --- Discord Bot ---
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
@@ -159,7 +147,6 @@ async def on_message(message):
         modus = "frech"
     else:
         modus = "brav"
-
     for wort in verboten:
         if wort in text:
             try:
@@ -179,18 +166,15 @@ async def on_message(message):
             else:
                 await message.channel.send(f"⚠️ Ey {message.author.mention}! Stopp! Familie und solche Wörter gehen hier GAR NICHT! Noch 1x und du fliegst! 🚫")
             return
-
     if text == "!admin":
         log_befehl(message.author, "!admin")
         letzte = "\\n".join([f"• {e['zeit']} - {e['user']}: {e['befehl']}" for e in list(command_log)[:5]]) or "Noch keine Befehle!"
         await message.channel.send(f"🔐 **JJ Admin-Menü** 🔐\\n\\nModus: **{modus_raw}**\\nUhrzeit: **{datetime.now().strftime('%H:%M')}**\\nBefehle insgesamt: **{total_commands['count']}**\\n\\n**Letzte 5 Befehle:**\\n{letzte}")
         return
-
     if text == "!hilfe":
         log_befehl(message.author, "!hilfe")
         await message.channel.send("💖 **Heyyy, ich bin JJ!** 💖\\n\\n• `!wer bist du` • `!jj` • `!witz` • `!kompliment` • `!umarmung` • `!frage ...` • `!ship @A @B` • `!song` • `!roast @User` • `!regeln` • `!warn @User` • `!admin`\\n\\nOder schreib einfach `hey JJ`!")
         return
-
     if text == "!wer bist du":
         log_befehl(message.author, "!wer bist du")
         if modus == "assi":
@@ -200,13 +184,11 @@ async def on_message(message):
         else:
             await message.channel.send("💖 Heyyy! Ich bin **JJ** - eure JJ! Ich bin das Mädchen in der Gruppe, immer lieb, immer da! 🥰")
         return
-
     if text == "!jj":
         log_befehl(message.author, "!jj")
         fakten = ["💅 Fun-Fact: Ich brauche keinen Schlaf!", "💖 Fun-Fact: Rosa und Glitzer sind mein Leben!", "😈 Fun-Fact: Mein Lieblingswort ist Hodenkobold. Frag nicht warum. 😂", "✨ Fun-Fact: Ich wurde von Noah gebaut!", "👑 Fun-Fact: Ich bin die Queen hier!"]
         await message.channel.send(random.choice(fakten))
         return
-
     if text == "!witz":
         log_befehl(message.author, "!witz")
         if modus == "assi":
@@ -215,7 +197,6 @@ async def on_message(message):
             witze = ["Warum können Geister so schlecht lügen? Weil man durch sie hindurchsieht! 👻😂", "Was sagt ein Informatiker, wenn er Hunger hat? Ich brauch mal ein Byte! 💻🍕", "Treffen sich zwei Magnete... Ich find dich voll anziehend! 🧲😘"]
         await message.channel.send(random.choice(witze))
         return
-
     if text == "!kompliment":
         log_befehl(message.author, "!kompliment")
         if modus == "assi":
@@ -223,7 +204,6 @@ async def on_message(message):
         else:
             await message.channel.send(f"🥰 {message.author.mention} - Du bist heute mal wieder sooo hübsch, ehrlich!")
         return
-
     if text in ["!umarmung", "!knuddel", "!hug"]:
         log_befehl(message.author, "!umarmung")
         if modus == "assi":
@@ -231,7 +211,6 @@ async def on_message(message):
         else:
             await message.channel.send(f"🤗 Komm her, {message.author.mention}! *umarm dich ganz fest* 💖")
         return
-
     if text.startswith("!frage"):
         log_befehl(message.author, "!frage")
         if modus == "assi":
@@ -242,7 +221,6 @@ async def on_message(message):
             auswahl = ["Ja, auf jeden Fall! 💖", "Auf jeden Fall! Zu 1000%! ✨"]
         await message.channel.send(f"🔮 {message.author.mention} - {random.choice(auswahl)}")
         return
-
     if text.startswith("!ship"):
         log_befehl(message.author, "!ship")
         if len(message.mentions) >= 2:
@@ -261,13 +239,11 @@ async def on_message(message):
         else:
             await message.channel.send("💕 Markier mal 2 Leute! z.B. `!ship @Noah @JJ` 😘")
         return
-
     if text == "!song":
         log_befehl(message.author, "!song")
         songs = ["🎵 Central Cee - Doja", "🎵 Luciano - Bamba 🔥", "🎵 Apache 207 - Komet ✨", "🎵 Ski Aggu - Friesenjung 😂💀", "🎵 Shirin David - Gib ihm 💅"]
         await message.channel.send(random.choice(songs))
         return
-
     if text.startswith("!roast"):
         log_befehl(message.author, "!roast")
         if len(message.mentions) >= 1:
@@ -282,7 +258,6 @@ async def on_message(message):
         else:
             await message.channel.send("😈 Wen soll ich roasten? Mach so: `!roast @Name`")
         return
-
     if text.startswith("!warn"):
         log_befehl(message.author, "!warn")
         if len(message.mentions) >= 1:
@@ -292,12 +267,10 @@ async def on_message(message):
         else:
             await message.channel.send("Wen soll ich warnen? Mach so: `!warn @Name`")
         return
-
     if text == "!regeln":
         log_befehl(message.author, "!regeln")
         await message.channel.send("📜 **Regeln von JJ:**\\n1. Sei lieb! 🤝\\n2. Kein Spam!\\n3. Hab Spaß! 😎\\n4. `hey JJ` wenn du mich brauchst\\n5. 🚫 GRENZE: Nix gegen Familie + keine harten Wörter! Sonst Kick!\\n6. JJ hat immer Recht! 😘")
         return
-
     if "hey jj" in text or "hey, jj" in text or "heyy jj" in text or "jj bist du da" in text:
         log_befehl(message.author, "hey JJ")
         if modus == "assi":
