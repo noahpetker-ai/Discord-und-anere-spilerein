@@ -16,9 +16,11 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # Befehle die man im Admin-Bereich erstellen kann
 # Format: {"witz": "Dein Witz-Text"}
 custom_commands = {
-    "ping": "Pong! JJ ist da! 🏓",
-    "moin": "Moin! 👋"
-    if message.content.lower() == "!wer bist du":
+    "ping": "Pong! JJ ist da! 🎉",
+    "moin": "Moin!",
+}
+
+if message.content.lower() == "!wer bist du":
     await message.channel.send(
         "👋 Hey! Ich bin **JJ** - der Bot von dieser Gruppe!\n\n"
         "Ich helfe euch hier, halte den Chat am Laufen und sorge dafür, dass alles smooth läuft. 😎\n\n"
@@ -27,7 +29,7 @@ custom_commands = {
         "• `!jj` - ein kleiner Fun-Fact über mich\n\n"
         "Schön, dass du da bist! 🙌"
     )
-}
+
 if "hey jj" in message.content.lower() or "hey, jj" in message.content.lower() or "heyy jj" in message.content.lower():
     antworten = [
         "Heyy! 👋 Da bin ich! Was geht?",
