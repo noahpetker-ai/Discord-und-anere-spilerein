@@ -15,3 +15,24 @@ def run_server():
     HTTPServer(('0.0.0.0', port), Handler).serve_forever()
 
 threading.Thread(target=run_server, daemon=True).start()
+
+import discord
+from discord.ext import commands
+
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+@bot.event
+async def on_ready():
+    print(f"JJ ist online als {bot.user}")
+
+@bot.command()
+async def ping(ctx):
+    await ctx.send("Pong! JJ ist da! 🏓")
+
+@bot.command()
+async def moin(ctx):
+    await ctx.send(f"Moin {ctx.author.mention}!")
+
+bot.run(os.environ.get("DISCORD_TOKEN"))
