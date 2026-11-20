@@ -18,6 +18,15 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 custom_commands = {
     "ping": "Pong! JJ ist da! 🏓",
     "moin": "Moin! 👋"
+    if message.content.lower() == "!wer bist du":
+    await message.channel.send(
+        "👋 Hey! Ich bin **JJ** - der Bot von dieser Gruppe!\n\n"
+        "Ich helfe euch hier, halte den Chat am Laufen und sorge dafür, dass alles smooth läuft. 😎\n\n"
+        "Probier doch mal aus:\n"
+        "• `!hilfe` - zeigt alle meine Befehle\n"
+        "• `!jj` - ein kleiner Fun-Fact über mich\n\n"
+        "Schön, dass du da bist! 🙌"
+    )
 }
 
 app = Flask(__name__)
