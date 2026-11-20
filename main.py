@@ -2,14 +2,20 @@ import os
 import random
 import discord
 from datetime import datetime
-from flask import Flask
+from flask import Flask, request, session, redirect
 from threading import Thread
 from collections import deque
 
-# --- Flask + Admin Menü ---
-app = Flask(__name__)
+# --- SICHERHEIT: Geheim + Passwort aus Render ---
+# In Render einstellen als Environment Variables!
+ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "admin-jj-geheim-123")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "jj-passwort-123")
+FLASK_SECRET = os.environ.get("FLASK_SECRET", "jj-super-geheim-key-123")
 
-# Letzte Befehle speichern (max 30 Stück)
+# --- Flask + Admin Menü mit BEIDEM ---
+app = Flask(__name__)
+app.secret_key = FLASK_SECRET
+
 command_log = deque(maxlen=30)
 total_commands = {"count": 0}
 
@@ -36,7 +42,7 @@ def home():
         <h1 style="font-size:55px;">💖 JJ ist online! 💖</h1>
         <p style="font-size:20px; color:#ff6eb4;">Modus gerade: {modus} | Uhrzeit: {datetime.now().strftime("%H:%M")}</p>
         <p style="color:#00ff88;">● Status: ONLINE | Befehle insgesamt: {total_commands["count"]}</p>
-        <a href="/admin" style="display:inline-block; margin-top:20px; background:#ff2e88; color:white; padding:15px 30px; border-radius:20px; text-decoration:none; font-weight:bold; font-size:18px;">🔐 Zum Admin-Menü</a>
+        <p style="color:#888; margin-top:30px;">Admin-Menü ist versteckt 🔐 Nur Noah kennt die URL + Passwort!</p>
         <h2 style="margin-top:40px;">📜 Befehle</h2>
         <table style="margin:0 auto; border-collapse:collapse; background:#1a1a2e;">
             <tr style="background:#ff2e88;"><th style="padding:12px 20px;">Befehl</th><th style="padding:12px 20px;">Was macht JJ?</th></tr>
@@ -52,8 +58,50 @@ def home():
     </html>
     """
 
+# Fake /admin - damit keiner merkt, dass es ein Admin-Menü gibt!
 @app.route('/admin')
-def admin():
+def fake_admin():
+    return """
+    <html><body style="background:#0f0f1a; color:white; font-family:Arial; text-align:center; padding-top:100px;">
+        <h1>404 - Nix hier! 😈</h1>
+        <p>Hier gibt es kein Admin-Menü... oder doch? 🤫</p>
+        <a href="/" style="color:#ff6eb4;">Zurück zu JJ</a>
+    </body></html>
+    """
+
+# ECHTES Admin-Menü - nur mit geheimer URL + Passwort!
+@app.route(f'/{ADMIN_SECRET}', methods=['GET', 'POST'])
+def real_admin():
+    # Passwort prüfen
+    if request.method == 'POST':
+        pw = request.form.get('password', '')
+        if pw == ADMIN_PASSWORD:
+            session['admin_ok'] = True
+            return redirect(f'/{ADMIN_SECRET}')
+        else:
+            return """
+            <html><body style="background:#0f0f1a; color:white; font-family:Arial; text-align:center; padding-top:100px;">
+                <h1>❌ Falsches Passwort!</h1>
+                <p>JJ hat dich erwischt, du Hodenkobold! 😂💀</p>
+                <a href="/" style="color:#ff6eb4;">Zurück</a>
+            </body></html>
+            """
+
+    if not session.get('admin_ok'):
+        # Login-Formular zeigen
+        return f"""
+        <html><body style="background:#0f0f1a; color:white; font-family:Arial; text-align:center; padding-top:80px;">
+            <h1>🔐 JJ Admin-Login</h1>
+            <p>Hey Noah! Gib dein Passwort ein 💖</p>
+            <form method="POST">
+                <input type="password" name="password" placeholder="Passwort..." style="padding:15px; font-size:18px; border-radius:10px; border:none; width:300px; text-align:center;">
+                <br><br>
+                <button type="submit" style="background:#ff2e88; color:white; padding:15px 40px; border:none; border-radius:20px; font-size:18px; font-weight:bold; cursor:pointer;">Einloggen 💅</button>
+            </form>
+        </body></html>
+        """
+
+    # Eingeloggt -> Admin-Menü zeigen
     modus = get_modus()
     rows = ""
     for eintrag in command_log:
@@ -65,7 +113,7 @@ def admin():
     <html>
     <head><title>JJ Admin-Menü</title><meta http-equiv="refresh" content="10"></head>
     <body style="background:#0f0f1a; color:white; font-family:Arial; text-align:center; padding:30px;">
-        <h1>🔐 JJ Admin-Menü</h1>
+        <h1>🔐 JJ Admin-Menü - Willkommen Noah! 💖</h1>
         <p>Seite aktualisiert sich alle 10 Sekunden von alleine!</p>
         <div style="display:flex; justify-content:center; gap:20px; margin:20px;">
             <div style="background:#1a1a2e; padding:20px; border-radius:15px;"><h2>{modus}</h2><p>Aktueller Modus</p></div>
@@ -78,7 +126,6 @@ def admin():
             <tr style="background:#ff2e88;"><th style="padding:12px;">Uhrzeit</th><th style="padding:12px;">Wer?</th><th style="padding:12px;">Befehl</th></tr>
             {rows}
         </table>
-        <p style="color:#888; margin-top:30px;">Tipp: In Discord kannst du auch <b>!admin</b> schreiben!</p>
     </body>
     </html>
     """
@@ -113,7 +160,6 @@ async def on_message(message):
     else:
         modus = "brav"
 
-    # Moderation
     for wort in verboten:
         if wort in text:
             try:
@@ -134,23 +180,15 @@ async def on_message(message):
                 await message.channel.send(f"⚠️ Ey {message.author.mention}! Stopp! Familie und solche Wörter gehen hier GAR NICHT! Noch 1x und du fliegst! 🚫")
             return
 
-    # --- !admin ---
     if text == "!admin":
-        letzte = "\\n".join([f"• {e['zeit']} - {e['user']}: {e['befehl']}" for e in list(command_log)[:5]]) or "Noch keine Befehle!"
-        await message.channel.send(
-            f"🔐 **JJ Admin-Menü** 🔐\n\n"
-            f"Modus gerade: **{modus_raw}**\n"
-            f"Uhrzeit: **{datetime.now().strftime('%H:%M')}**\n"
-            f"Befehle insgesamt: **{total_commands['count']}**\n\n"
-            f"**Letzte 5 Befehle:**\n{letzte}\n\n"
-            f"Website Admin: schau auf der Render-Seite unter /admin nach!"
-        )
         log_befehl(message.author, "!admin")
+        letzte = "\\n".join([f"• {e['zeit']} - {e['user']}: {e['befehl']}" for e in list(command_log)[:5]]) or "Noch keine Befehle!"
+        await message.channel.send(f"🔐 **JJ Admin-Menü** 🔐\\n\\nModus: **{modus_raw}**\\nUhrzeit: **{datetime.now().strftime('%H:%M')}**\\nBefehle insgesamt: **{total_commands['count']}**\\n\\n**Letzte 5 Befehle:**\\n{letzte}")
         return
 
     if text == "!hilfe":
         log_befehl(message.author, "!hilfe")
-        await message.channel.send("💖 **Heyyy, ich bin JJ!** 💖\n\n• `!wer bist du` • `!jj` • `!witz` • `!kompliment` • `!umarmung` • `!frage ...` • `!ship @A @B` • `!song` • `!roast @User` • `!regeln` • `!warn @User` • `!admin`\n\nOder schreib einfach `hey JJ`! Je später es ist, umso frecher bin ich... 😈")
+        await message.channel.send("💖 **Heyyy, ich bin JJ!** 💖\\n\\n• `!wer bist du` • `!jj` • `!witz` • `!kompliment` • `!umarmung` • `!frage ...` • `!ship @A @B` • `!song` • `!roast @User` • `!regeln` • `!warn @User` • `!admin`\\n\\nOder schreib einfach `hey JJ`!")
         return
 
     if text == "!wer bist du":
