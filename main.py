@@ -9,7 +9,20 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "JJ ist online! 🔥"
+    return """
+    <html>
+    <head><title>JJ ist online!</title></head>
+    <body style="background:#1a1a2e; color:white; font-family:Arial; text-align:center; padding-top:100px;">
+        <h1 style="font-size:60px;">🔥 JJ ist online! 🔥</h1>
+        <p style="font-size:22px;">Der Bot läuft und ist bereit für eure Gruppe!</p>
+        <p style="background:#16213e; display:inline-block; padding:15px 30px; border-radius:15px;">
+            Befehle in Discord: !hilfe | !wer bist du | !jj | hey JJ
+        </p>
+        <br><br>
+        <p style="color:#00ff88;">● Status: ONLINE</p>
+    </body>
+    </html>
+    """
 
 def run_flask():
     port = int(os.environ.get("PORT", 10000))
