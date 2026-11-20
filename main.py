@@ -28,6 +28,16 @@ custom_commands = {
         "Schön, dass du da bist! 🙌"
     )
 }
+if "hey jj" in message.content.lower() or "hey, jj" in message.content.lower() or "heyy jj" in message.content.lower():
+    antworten = [
+        "Heyy! 👋 Da bin ich! Was geht?",
+        "Jo, ich bin da! 😎 Was brauchst du?",
+        "Hey! 🙌 Schön dich zu sehen! Was gibt's?",
+        "Ja bitte? 😄 Ich höre!",
+        "Hey hey! 🔥 Erzähl mal, was los ist?",
+    ]
+    await message.channel.send(random.choice(antworten))
+
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "jj-secret-123")
