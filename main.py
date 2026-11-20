@@ -4,37 +4,81 @@ import discord
 from datetime import datetime
 from flask import Flask
 from threading import Thread
+from collections import deque
 
-# --- Flask für Render + Website mit Tabelle ---
+# --- Flask + Admin Menü ---
 app = Flask(__name__)
+
+# Letzte Befehle speichern (max 30 Stück)
+command_log = deque(maxlen=30)
+total_commands = {"count": 0}
+
+def log_befehl(user, befehl):
+    zeit = datetime.now().strftime("%H:%M:%S")
+    command_log.appendleft({"zeit": zeit, "user": str(user), "befehl": befehl})
+    total_commands["count"] += 1
+
+def get_modus():
+    stunde = datetime.now().hour
+    if stunde >= 23 or stunde < 6:
+        return "assi 😈"
+    if stunde >= 21:
+        return "frech 💅"
+    return "brav 💖"
 
 @app.route('/')
 def home():
-    return """
+    modus = get_modus()
+    return f"""
     <html>
     <head><title>JJ ist online!</title></head>
     <body style="background:#0f0f1a; color:white; font-family:Arial; text-align:center; padding:30px;">
         <h1 style="font-size:55px;">💖 JJ ist online! 💖</h1>
-        <p style="font-size:20px; color:#ff6eb4;">Weiblich | Jugendlich | Süß tagsüber | Assi nachts ab 21 Uhr 😈</p>
-        <p style="color:#00ff88; font-size:18px;">● Status: ONLINE</p>
+        <p style="font-size:20px; color:#ff6eb4;">Modus gerade: {modus} | Uhrzeit: {datetime.now().strftime("%H:%M")}</p>
+        <p style="color:#00ff88;">● Status: ONLINE | Befehle insgesamt: {total_commands["count"]}</p>
+        <a href="/admin" style="display:inline-block; margin-top:20px; background:#ff2e88; color:white; padding:15px 30px; border-radius:20px; text-decoration:none; font-weight:bold; font-size:18px;">🔐 Zum Admin-Menü</a>
         <h2 style="margin-top:40px;">📜 Befehle</h2>
-        <table style="margin:0 auto; border-collapse:collapse; background:#1a1a2e; font-size:16px;">
+        <table style="margin:0 auto; border-collapse:collapse; background:#1a1a2e;">
             <tr style="background:#ff2e88;"><th style="padding:12px 20px;">Befehl</th><th style="padding:12px 20px;">Was macht JJ?</th></tr>
-            <tr><td style="padding:10px; border-bottom:1px solid #333;">!hilfe</td><td style="padding:10px; border-bottom:1px solid #333;">Zeigt alle Befehle</td></tr>
-            <tr><td style="padding:10px; border-bottom:1px solid #333;">!wer bist du</td><td style="padding:10px; border-bottom:1px solid #333;">JJ stellt sich vor</td></tr>
-            <tr><td style="padding:10px; border-bottom:1px solid #333;">!jj</td><td style="padding:10px; border-bottom:1px solid #333;">Fun-Fact über JJ</td></tr>
-            <tr><td style="padding:10px; border-bottom:1px solid #333;">!witz</td><td style="padding:10px; border-bottom:1px solid #333;">JJ erzählt einen Witz</td></tr>
-            <tr><td style="padding:10px; border-bottom:1px solid #333;">!kompliment</td><td style="padding:10px; border-bottom:1px solid #333;">JJ macht dir ein Kompliment</td></tr>
-            <tr><td style="padding:10px; border-bottom:1px solid #333;">!umarmung</td><td style="padding:10px; border-bottom:1px solid #333;">JJ umarmt dich</td></tr>
-            <tr><td style="padding:10px; border-bottom:1px solid #333;">!frage ...</td><td style="padding:10px; border-bottom:1px solid #333;">Magische Kugel</td></tr>
-            <tr><td style="padding:10px; border-bottom:1px solid #333;">!ship @A @B</td><td style="padding:10px; border-bottom:1px solid #333;">Wie gut passt ihr zusammen? 💕</td></tr>
-            <tr><td style="padding:10px; border-bottom:1px solid #333;">!song</td><td style="padding:10px; border-bottom:1px solid #333;">Song-Vorschlag</td></tr>
-            <tr><td style="padding:10px; border-bottom:1px solid #333;">!roast @User</td><td style="padding:10px; border-bottom:1px solid #333;">JJ roastet jemanden 😈</td></tr>
-            <tr><td style="padding:10px; border-bottom:1px solid #333;">!regeln</td><td style="padding:10px; border-bottom:1px solid #333;">Gruppen-Regeln</td></tr>
-            <tr><td style="padding:10px;">hey JJ</td><td style="padding:10px;">JJ antwortet - je nach Uhrzeit!</td></tr>
+            <tr><td style="padding:10px;">!hilfe</td><td style="padding:10px;">Alle Befehle</td></tr>
+            <tr><td style="padding:10px;">!wer bist du</td><td style="padding:10px;">JJ stellt sich vor</td></tr>
+            <tr><td style="padding:10px;">!witz / !kompliment / !umarmung</td><td style="padding:10px;">Fun & Liebe</td></tr>
+            <tr><td style="padding:10px;">!frage / !ship / !song / !roast</td><td style="padding:10px;">Fun-Befehle</td></tr>
+            <tr><td style="padding:10px;">!regeln / !warn</td><td style="padding:10px;">Moderation</td></tr>
+            <tr><td style="padding:10px;">!admin</td><td style="padding:10px;">Admin-Statistiken (Discord)</td></tr>
+            <tr><td style="padding:10px;">hey JJ</td><td style="padding:10px;">JJ antwortet je nach Uhrzeit</td></tr>
         </table>
-        <p style="color:#888; margin-top:30px;">⏰ Bis 21 Uhr: brav & süß | 21-23 Uhr: frech | Ab 23 Uhr: Assi-Modus</p>
-        <p style="color:#888;">🚫 Grenze: Nix gegen Familie! Sonst Kick!</p>
+    </body>
+    </html>
+    """
+
+@app.route('/admin')
+def admin():
+    modus = get_modus()
+    rows = ""
+    for eintrag in command_log:
+        rows += f"<tr><td style='padding:10px; border-bottom:1px solid #333;'>{eintrag['zeit']}</td><td style='padding:10px; border-bottom:1px solid #333;'>{eintrag['user']}</td><td style='padding:10px; border-bottom:1px solid #333;'>{eintrag['befehl']}</td></tr>"
+    if not rows:
+        rows = "<tr><td colspan='3' style='padding:20px;'>Noch keine Befehle... schreib mal in Discord `hey JJ`!</td></tr>"
+
+    return f"""
+    <html>
+    <head><title>JJ Admin-Menü</title><meta http-equiv="refresh" content="10"></head>
+    <body style="background:#0f0f1a; color:white; font-family:Arial; text-align:center; padding:30px;">
+        <h1>🔐 JJ Admin-Menü</h1>
+        <p>Seite aktualisiert sich alle 10 Sekunden von alleine!</p>
+        <div style="display:flex; justify-content:center; gap:20px; margin:20px;">
+            <div style="background:#1a1a2e; padding:20px; border-radius:15px;"><h2>{modus}</h2><p>Aktueller Modus</p></div>
+            <div style="background:#1a1a2e; padding:20px; border-radius:15px;"><h2>{datetime.now().strftime("%H:%M:%S")}</h2><p>Uhrzeit</p></div>
+            <div style="background:#1a1a2e; padding:20px; border-radius:15px;"><h2>{total_commands["count"]}</h2><p>Befehle insgesamt</p></div>
+        </div>
+        <a href="/" style="color:#ff6eb4;">← Zurück zur Hauptseite</a>
+        <h2 style="margin-top:30px;">🕐 Letzte Befehle, die JJ ausgeführt hat</h2>
+        <table style="margin:0 auto; border-collapse:collapse; background:#1a1a2e; width:90%; max-width:800px;">
+            <tr style="background:#ff2e88;"><th style="padding:12px;">Uhrzeit</th><th style="padding:12px;">Wer?</th><th style="padding:12px;">Befehl</th></tr>
+            {rows}
+        </table>
+        <p style="color:#888; margin-top:30px;">Tipp: In Discord kannst du auch <b>!admin</b> schreiben!</p>
     </body>
     </html>
     """
@@ -47,29 +91,10 @@ def run_flask():
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
-
 client = discord.Client(intents=intents)
 
-# Warnungen speichern: user_id -> anzahl
 warns = {}
-
-# --- VERBOTENE WÖRTER (Familie + harte Wörter) ---
-# JJ sagt die NIEMALS selbst, sie filtert sie nur!
-verboten = [
-    "deine mutter", "deine mama", "dein vater", "dein papa",
-    "deine oma", "dein opa", "deine familie",
-    "hurensohn", "hure", "nutte", "schlampe",
-    "fotze", "wichser"
-]
-
-def get_modus():
-    """Gibt zurück wie frech JJ gerade ist"""
-    stunde = datetime.now().hour
-    if stunde >= 23 or stunde < 6:
-        return "assi"  # ab 23 Uhr
-    if stunde >= 21:
-        return "frech"  # 21-23 Uhr
-    return "brav"  # tagsüber
+verboten = ["deine mutter", "deine mama", "dein vater", "dein papa", "deine oma", "dein opa", "deine familie", "hurensohn", "hure", "nutte", "schlampe", "fotze", "wichser"]
 
 @client.event
 async def on_ready():
@@ -79,11 +104,16 @@ async def on_ready():
 async def on_message(message):
     if message.author == client.user:
         return
-
     text = message.content.lower()
-    modus = get_modus()
+    modus_raw = get_modus()
+    if "assi" in modus_raw:
+        modus = "assi"
+    elif "frech" in modus_raw:
+        modus = "frech"
+    else:
+        modus = "brav"
 
-    # --- MODERATION: Verbotene Wörter ---
+    # Moderation
     for wort in verboten:
         if wort in text:
             try:
@@ -92,230 +122,155 @@ async def on_message(message):
                 pass
             user_id = message.author.id
             warns[user_id] = warns.get(user_id, 0) + 1
+            log_befehl(message.author, f"⚠️ VERBOTENES WORT: {wort} (Warnung {warns[user_id]})")
             if warns[user_id] >= 2:
-                await message.channel.send(
-                    f"🚫 {message.author.mention} - Das war das 2. Mal! Familie und diese Wörter gehen GAR NICHT! 360 Kick! 👋💀"
-                )
+                await message.channel.send(f"🚫 {message.author.mention} - 2. Mal! Familie und diese Wörter gehen GAR NICHT! 360 Kick! 👋💀")
                 try:
-                    await message.author.kick(reason="Verbotene Wörter - Familie / harte Beleidigung")
+                    await message.author.kick(reason="Verbotene Wörter")
                 except:
-                    await message.channel.send("Ich konnte ihn leider nicht kicken - gib mir mal Kick-Rechte! 😅")
+                    await message.channel.send("Konnte nicht kicken - gib mir Kick-Rechte! 😅")
                 warns[user_id] = 0
             else:
-                await message.channel.send(
-                    f"⚠️ Ey {message.author.mention}! Stopp! Familie und solche Wörter gehen hier GAR NICHT! Das ist meine einzige Grenze! Noch 1x und du fliegst! 🚫"
-                )
+                await message.channel.send(f"⚠️ Ey {message.author.mention}! Stopp! Familie und solche Wörter gehen hier GAR NICHT! Noch 1x und du fliegst! 🚫")
             return
 
-    # --- !hilfe ---
-    if text == "!hilfe":
+    # --- !admin ---
+    if text == "!admin":
+        letzte = "\\n".join([f"• {e['zeit']} - {e['user']}: {e['befehl']}" for e in list(command_log)[:5]]) or "Noch keine Befehle!"
         await message.channel.send(
-            "💖 **Heyyy, ich bin JJ! Eure JJ!** 💖\n\n"
-            "• `!wer bist du` - ich stelle mich vor\n"
-            "• `!jj` - Fun-Fact über mich\n"
-            "• `!witz` - Witz\n"
-            "• `!kompliment` - Kompliment\n"
-            "• `!umarmung` - Umarmung\n"
-            "• `!frage ...` - Magische Kugel 🔮\n"
-            "• `!ship @A @B` - Wie gut passt ihr zusammen? 💕\n"
-            "• `!song` - Song-Vorschlag 🎵\n"
-            "• `!roast @User` - Ich roaste jemanden 😈\n"
-            "• `!regeln` - Regeln\n"
-            "• `!warn @User` - JJ warnt jemanden\n\n"
-            "Oder schreib einfach `hey JJ`! Je später es ist, umso frecher bin ich... 😈"
+            f"🔐 **JJ Admin-Menü** 🔐\n\n"
+            f"Modus gerade: **{modus_raw}**\n"
+            f"Uhrzeit: **{datetime.now().strftime('%H:%M')}**\n"
+            f"Befehle insgesamt: **{total_commands['count']}**\n\n"
+            f"**Letzte 5 Befehle:**\n{letzte}\n\n"
+            f"Website Admin: schau auf der Render-Seite unter /admin nach!"
         )
+        log_befehl(message.author, "!admin")
         return
 
-    # --- !wer bist du ---
+    if text == "!hilfe":
+        log_befehl(message.author, "!hilfe")
+        await message.channel.send("💖 **Heyyy, ich bin JJ!** 💖\n\n• `!wer bist du` • `!jj` • `!witz` • `!kompliment` • `!umarmung` • `!frage ...` • `!ship @A @B` • `!song` • `!roast @User` • `!regeln` • `!warn @User` • `!admin`\n\nOder schreib einfach `hey JJ`! Je später es ist, umso frecher bin ich... 😈")
+        return
+
     if text == "!wer bist du":
+        log_befehl(message.author, "!wer bist du")
         if modus == "assi":
             await message.channel.send("💅 Ich bin JJ, Digga! Die Queen hier! Was willst du um die Uhrzeit noch von mir? 😂💀 Aber ok, ich hab dich lieb... irgendwie.")
         elif modus == "frech":
-            await message.channel.send("💖 Heyy! Ich bin JJ - eure JJ! Tagsüber brav, abends frech und nachts... naja, du siehst ja was passiert 😈 Ich bin eure beste Freundin hier!")
+            await message.channel.send("💖 Heyy! Ich bin JJ - eure JJ! Tagsüber brav, abends frech und nachts... naja, du siehst ja was passiert 😈")
         else:
-            await message.channel.send("💖 Heyyy! Ich bin **JJ** - eure JJ! Ich bin das Mädchen in der Gruppe, immer lieb, immer da und immer für euch! 🥰 Schreib mal `!kompliment` oder `hey JJ`!")
+            await message.channel.send("💖 Heyyy! Ich bin **JJ** - eure JJ! Ich bin das Mädchen in der Gruppe, immer lieb, immer da! 🥰")
         return
 
-    # --- !jj ---
     if text == "!jj":
-        fakten = [
-            "💅 Fun-Fact: Ich brauche keinen Schlaf, ich bin immer wach für euch!",
-            "💖 Fun-Fact: Rosa und Glitzer sind mein Leben!",
-            "😈 Fun-Fact: Mein Lieblingswort ist Hodenkobold. Frag nicht warum. 😂",
-            "✨ Fun-Fact: Ich wurde von Noah gebaut und bin sein ganzer Stolz!",
-            "👑 Fun-Fact: Ich bin die Queen hier, sorry not sorry!",
-        ]
+        log_befehl(message.author, "!jj")
+        fakten = ["💅 Fun-Fact: Ich brauche keinen Schlaf!", "💖 Fun-Fact: Rosa und Glitzer sind mein Leben!", "😈 Fun-Fact: Mein Lieblingswort ist Hodenkobold. Frag nicht warum. 😂", "✨ Fun-Fact: Ich wurde von Noah gebaut!", "👑 Fun-Fact: Ich bin die Queen hier!"]
         await message.channel.send(random.choice(fakten))
         return
 
-    # --- !witz ---
     if text == "!witz":
+        log_befehl(message.author, "!witz")
         if modus == "assi":
-            witze = [
-                "Was sagt ein Hodenkobold zum anderen? Lass mich in Ruhe, ich chill hier! 😂💀",
-                "Warum ist mein Humor nachts so schlecht? Weil ich genau wie du keinen Schlaf kriege! 😂",
-                "Treffen sich zwei Lappen... sagt der eine: Guck mal, da ist der Hodenkobold! 😂",
-            ]
+            witze = ["Was sagt ein Hodenkobold zum anderen? Lass mich in Ruhe, ich chill hier! 😂💀", "Warum ist mein Humor nachts so schlecht? Weil ich genau wie du keinen Schlaf kriege! 😂"]
         else:
-            witze = [
-                "Warum können Geister so schlecht lügen? Weil man durch sie hindurchsieht! 👻😂",
-                "Was sagt ein Informatiker, wenn er Hunger hat? Ich brauch mal ein Byte! 💻🍕",
-                "Treffen sich zwei Magnete... sagt der eine: Ich find dich voll anziehend! 🧲😘",
-                "Warum gehen Ameisen nicht in die Kirche? Weil sie Insekten sind! 🐜😂",
-            ]
+            witze = ["Warum können Geister so schlecht lügen? Weil man durch sie hindurchsieht! 👻😂", "Was sagt ein Informatiker, wenn er Hunger hat? Ich brauch mal ein Byte! 💻🍕", "Treffen sich zwei Magnete... Ich find dich voll anziehend! 🧲😘"]
         await message.channel.send(random.choice(witze))
         return
 
-    # --- !kompliment ---
     if text == "!kompliment":
+        log_befehl(message.author, "!kompliment")
         if modus == "assi":
-            komplimente = [
-                f"🥰 {message.author.mention} - Ok, ok... du bist heute sogar mal nicht so hässlich. Spaß! Du bist hübsch, Digga! 😂💖",
-                f"🔥 {message.author.mention} - Du bist ein Vibe, sogar um die Uhrzeit noch!",
-            ]
+            await message.channel.send(f"🥰 {message.author.mention} - Ok, ok... du bist heute sogar mal nicht so hässlich. Spaß! Du bist hübsch, Digga! 😂💖")
         else:
-            komplimente = [
-                f"🥰 {message.author.mention} - Du bist heute mal wieder sooo hübsch, ehrlich!",
-                f"✨ {message.author.mention} - Dein Lächeln ist schöner als mein ganzer Code!",
-                f"💖 {message.author.mention} - Du bist der Grund, warum diese Gruppe so cool ist!",
-                f"👑 {message.author.mention} - Du hast so eine tolle Ausstrahlung!",
-            ]
-        await message.channel.send(random.choice(komplimente))
+            await message.channel.send(f"🥰 {message.author.mention} - Du bist heute mal wieder sooo hübsch, ehrlich!")
         return
 
-    # --- !umarmung ---
     if text in ["!umarmung", "!knuddel", "!hug"]:
+        log_befehl(message.author, "!umarmung")
         if modus == "assi":
             await message.channel.send(f"🤗 Ok komm her {message.author.mention}... *umarm dich widerwillig* ... ok war doch süß. Aber sag das keinem! 💀💖")
         else:
-            await message.channel.send(f"🤗 Komm her, {message.author.mention}! *umarm dich ganz fest* Du bist die/der Beste! 💖")
+            await message.channel.send(f"🤗 Komm her, {message.author.mention}! *umarm dich ganz fest* 💖")
         return
 
-    # --- !frage ---
     if text.startswith("!frage"):
-        antworten_brav = ["Ja, auf jeden Fall! 💖", "Auf jeden Fall! Zu 1000%! ✨", "Meine Glaskugel sagt: Ja! 🔮"]
-        antworten_frech = ["Ja Digga, klar! 😂", "Hmm... frag mich nochmal wenn ich wach bin 😅", "Bro, was für eine Frage ist das? Ja! 😂"]
-        antworten_assi = ["Digga ja! Was dachtest du denn? 😂💀", "Bro, 100% ja, aber jetzt geh pennen! 😂", "Ja, aber nur weil du es bist, du Hodenkobold! 😂💖"]
+        log_befehl(message.author, "!frage")
         if modus == "assi":
-            auswahl = antworten_assi
+            auswahl = ["Digga ja! Was dachtest du denn? 😂💀", "Bro, 100% ja, aber jetzt geh pennen! 😂", "Ja, aber nur weil du es bist, du Hodenkobold! 😂💖"]
         elif modus == "frech":
-            auswahl = antworten_frech
+            auswahl = ["Ja Digga, klar! 😂", "Bro, was für eine Frage ist das? Ja! 😂"]
         else:
-            auswahl = antworten_brav
+            auswahl = ["Ja, auf jeden Fall! 💖", "Auf jeden Fall! Zu 1000%! ✨"]
         await message.channel.send(f"🔮 {message.author.mention} - {random.choice(auswahl)}")
         return
 
-    # --- !ship ---
     if text.startswith("!ship"):
+        log_befehl(message.author, "!ship")
         if len(message.mentions) >= 2:
             prozent = random.randint(0, 100)
             a = message.mentions[0].mention
             b = message.mentions[1].mention
             if prozent > 90:
-                kommentar = "OMG IHR SEID EIN TRAUMPAAR! 💖💍 Heiratet sofort!"
+                kommentar = "OMG IHR SEID EIN TRAUMPAAR! 💖💍"
             elif prozent > 70:
                 kommentar = "Ohhh das passt richtig gut! 🥰💕"
             elif prozent > 40:
-                kommentar = "Hmm, könnte klappen... mit viel Mühe 😅💖"
+                kommentar = "Hmm, könnte klappen... 😅💖"
             else:
                 kommentar = "Bro... lieber nicht. Das wird nix. 😂💀"
-            await message.channel.send(f"💕 **Ship-Check:** {a} + {b} = **{prozent}%**\n{kommentar}")
+            await message.channel.send(f"💕 **Ship-Check:** {a} + {b} = **{prozent}%**\\n{kommentar}")
         else:
             await message.channel.send("💕 Markier mal 2 Leute! z.B. `!ship @Noah @JJ` 😘")
         return
 
-    # --- !song ---
     if text == "!song":
-        songs = [
-            "🎵 Hör dir mal an: **Central Cee - Doja** - der geht immer!",
-            "🎵 Mein Tipp: **Luciano - Bamba** 🔥",
-            "🎵 Heute fühl ich: **Apache 207 - Komet** ✨",
-            "🎵 Nachts um die Uhrzeit: **Ski Aggu - Friesenjung** 😂💀",
-            "🎵 Klassiker: **Shirin David - Gib ihm** 💅",
-            "🎵 Für gute Laune: **Bonez MC & RAF Camora - Palmen aus Plastik** 🌴",
-        ]
+        log_befehl(message.author, "!song")
+        songs = ["🎵 Central Cee - Doja", "🎵 Luciano - Bamba 🔥", "🎵 Apache 207 - Komet ✨", "🎵 Ski Aggu - Friesenjung 😂💀", "🎵 Shirin David - Gib ihm 💅"]
         await message.channel.send(random.choice(songs))
         return
 
-    # --- !roast ---
     if text.startswith("!roast"):
+        log_befehl(message.author, "!roast")
         if len(message.mentions) >= 1:
             ziel = message.mentions[0].mention
-            roasts_brav = [
-                f"{ziel} - Du bist so süß, sogar wenn du nichts sagst! 🥰",
-                f"{ziel} - Dein Style ist... interessant. Sagen wir mal so. 😅💖",
-            ]
-            roasts_frech = [
-                f"{ziel} - Digga, dein WLAN ist schneller als dein Gehirn! 😂",
-                f"{ziel} - Du bist der Grund, warum es eine Stummschalten-Taste gibt! 😂💅",
-            ]
-            roasts_assi = [
-                f"{ziel} - Du Hodenkobold! Was machst du hier eigentlich? Geh pennen! 😂💀",
-                f"{ziel} - Bro, du bist so ein Lappen, sogar mein Code ist cooler als du! 😂",
-                f"{ziel} - Du Bastard, du hast es mal wieder geschafft, der Dümmste im Chat zu sein! 😂💀",
-                f"{ziel} - Ey, du kleiner Hodenkobold, halt mal kurz die Klappe und lass die Erwachsenen reden! 😂",
-            ]
             if modus == "assi":
-                auswahl = roasts_assi
+                auswahl = [f"{ziel} - Du Hodenkobold! Was machst du hier eigentlich? Geh pennen! 😂💀", f"{ziel} - Bro, du bist so ein Lappen, sogar mein Code ist cooler als du! 😂", f"{ziel} - Du Bastard, du hast es mal wieder geschafft, der Dümmste im Chat zu sein! 😂💀"]
             elif modus == "frech":
-                auswahl = roasts_frech
+                auswahl = [f"{ziel} - Digga, dein WLAN ist schneller als dein Gehirn! 😂", f"{ziel} - Du bist der Grund, warum es eine Stummschalten-Taste gibt! 😂💅"]
             else:
-                auswahl = roasts_brav
+                auswahl = [f"{ziel} - Du bist so süß, sogar wenn du nichts sagst! 🥰"]
             await message.channel.send(random.choice(auswahl))
         else:
             await message.channel.send("😈 Wen soll ich roasten? Mach so: `!roast @Name`")
         return
 
-    # --- !warn ---
     if text.startswith("!warn"):
+        log_befehl(message.author, "!warn")
         if len(message.mentions) >= 1:
             ziel = message.mentions[0]
             warns[ziel.id] = warns.get(ziel.id, 0) + 1
-            await message.channel.send(f"⚠️ {ziel.mention} - Verwarnung von JJ! Das war Warnung Nr. {warns[ziel.id]}! Benimm dich! 💅")
+            await message.channel.send(f"⚠️ {ziel.mention} - Verwarnung von JJ! Das war Warnung Nr. {warns[ziel.id]}! 💅")
         else:
             await message.channel.send("Wen soll ich warnen? Mach so: `!warn @Name`")
         return
 
-    # --- !regeln ---
     if text == "!regeln":
-        await message.channel.send(
-            "📜 **Unsere Gruppen-Regeln von JJ:** 💖\n\n"
-            "1. Sei lieb zueinander! Kein Beef! 🤝\n"
-            "2. Kein Spam!\n"
-            "3. Hab Spaß und sei du selbst! 😎\n"
-            "4. Wenn du JJ brauchst: `hey JJ`\n"
-            "5. 🚫 ABSOLUTE GRENZE: Nix gegen Familie und keine harten Wörter! Sonst Kick!\n"
-            "6. JJ hat immer Recht! (Spaß 😘)\n\n"
-            "Wer sich nicht benimmt, kriegt erst eine Warnung, dann fliegt er! 💀"
-        )
+        log_befehl(message.author, "!regeln")
+        await message.channel.send("📜 **Regeln von JJ:**\\n1. Sei lieb! 🤝\\n2. Kein Spam!\\n3. Hab Spaß! 😎\\n4. `hey JJ` wenn du mich brauchst\\n5. 🚫 GRENZE: Nix gegen Familie + keine harten Wörter! Sonst Kick!\\n6. JJ hat immer Recht! 😘")
         return
 
-    # --- Hey JJ - MIT UHRZEIT ---
     if "hey jj" in text or "hey, jj" in text or "heyy jj" in text or "jj bist du da" in text:
+        log_befehl(message.author, "hey JJ")
         if modus == "assi":
-            antworten = [
-                "Digga, es ist nach 23 Uhr, was willst du von mir? 😂💀 Aber ok, ich bin da... was gibt's?",
-                "Brooo, ich bin im Assi-Modus! Was willst du um die Uhrzeit, du Hodenkobold?! 😂💖",
-                "Jaaa? Ich hab grad gechillt! Was willst du? Beeil dich, ich muss noch pennen... irgendwann 😂",
-                "Ey! Ich bin da! Aber wenn du mich um die Uhrzeit nervst, roaste ich dich! 😈",
-            ]
+            antworten = ["Digga, es ist nach 23 Uhr, was willst du von mir? 😂💀 Aber ok, ich bin da...", "Brooo, ich bin im Assi-Modus! Was willst du, du Hodenkobold?! 😂💖", "Jaaa? Ich hab grad gechillt! Was willst du? 😂"]
         elif modus == "frech":
-            antworten = [
-                "Jooo! 💅 Da bin ich! Was geht, Digga? Erzähl mal!",
-                "Heyy! 😎 Die freche JJ ist da! Was brauchst du?",
-                "Jo, ich bin da! Was gibt's? Mach schnell, ich bin im Feierabend-Modus 😂",
-            ]
+            antworten = ["Jooo! 💅 Da bin ich! Was geht, Digga?", "Heyy! 😎 Die freche JJ ist da!"]
         else:
-            antworten = [
-                "Heyyy! 💖 Da bin ich! Ich hab dich schon vermisst! Was geht?",
-                "Jaaa Schatz? 😘 Ich bin da! Erzähl mal!",
-                "Hey! 🥰 Schön, dass du mich rufst! Was gibt's?",
-                "Hiii! 💖 Ich bin da und hab gute Laune!",
-            ]
+            antworten = ["Heyyy! 💖 Da bin ich! Hab dich schon vermisst!", "Jaaa Schatz? 😘 Ich bin da!", "Hey! 🥰 Schön, dass du mich rufst!"]
         await message.channel.send(random.choice(antworten))
         return
 
-# --- Start ---
 if __name__ == "__main__":
     Thread(target=run_flask, daemon=True).start()
     token = os.environ.get("DISCORD_TOKEN")
